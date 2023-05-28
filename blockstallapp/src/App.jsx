@@ -4,7 +4,7 @@ import Auth from './Auth'
 import Redeems from './Redeems.jsx'
 import blockstalllogo from './assets/blockstalltrans.png'
 
-export let ws = new WebSocket('ws://bssocket.korio.me');
+export let ws = new WebSocket('wss://bssocket.korio.me');
 
 
 

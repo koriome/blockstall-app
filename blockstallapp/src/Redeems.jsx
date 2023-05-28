@@ -1,8 +1,10 @@
 import {useEffect, useState} from "react";
 import {supabase} from "./supabaseclient.js";
+import { ws } from "./App.jsx";
+import App from "./App.jsx";
 
 
-export default function Redeems({ session }) {
+export default function Redeems({ session, parentGetUser }) {
     const [advancements, setAdvancements] = useState([]);
     const [username, setUsername] = useState(null)
     const [avatar, setAvatar] = useState(null)
@@ -10,10 +12,21 @@ export default function Redeems({ session }) {
 
 
 
-    let ws = new WebSocket('ws://192.168.1.239:9666');
 
     useEffect(() => {
         getUser()
+
+        const users = supabase.channel('custom-all-channel')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: '*' },
+                (payload) => {
+                    getAdvancements();
+                    getUser();
+                    console.log("page update")
+                }
+            )
+            .subscribe()
     }, [session])
 
     async function getUser() {
@@ -35,57 +48,32 @@ export default function Redeems({ session }) {
 
     }
 
-
     useEffect(() => {
         getAdvancements();
     }, []);
 
-    ws.addEventListener("message", async (event) => {
-        let json = JSON.parse(event.data)
-        console.log(json.messagetype);
-        if(json.messagetype === "completion"){
-            let {data, error} = await supabase
-                .from('advancements')
-                .select('*')
-                .eq('mcid', json.mcid)
-                .single()
-            if(data.queue === 0){
-                let {error} = await supabase
-                    .from('advancements')
-                    .update({completed: true})
-                    .eq('mcid', json.mcid);
-                if (error){
-                    alert(error.message)
+
+    function dbSubscribe(){
+
+        const users = supabase.channel('custom-all-channel')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: '*' },
+                (payload) => {
+                    getAdvancements();
+                    getUser();
+                    console.log("page update")
                 }
-            } else{
-                let {error} = await supabase
-                    .from('advancements')
-                    .update({queue: data.queue-1})
-                    .eq('mcid', json.mcid);
-                if (error){
-                    alert(error.message)
-                }
-            }
-        }
-    });
+            )
+            .subscribe()
 
-
-    const users = supabase.channel('custom-all-channel')
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'advancements' },
-            (payload) => {
-                getAdvancements();
-            }
-        )
-        .subscribe()
-
+    }
 
 
 
 
     async function getAdvancements() {
-        const {data} = await supabase.from("advancements").select();
+        const {data} = await supabase.from("advancements").select().order('sorter', { ascending: true });
         setAdvancements(data);
     }
 
@@ -93,66 +81,36 @@ export default function Redeems({ session }) {
         const { error } = await supabase.auth.signOut()
     }
 
-    async function steal(price){
 
-        const{user}=session;
-
-        let {error} = await supabase
-            .from('users')
-            .update({tokens: tokens-price})
-            .eq('id', user.id);
-        if (error){
-            alert(error.message)
-        }
-
-        setTokens(tokens-price);
-    }
-
-    async function buttonPress(mcid, price) {
+    async function buttonPress(mcid, price, completed, queue) {
         if(tokens >= price){
+            const { user } = session;
             console.log("Sending websocket message")
-            await steal(price);
-            let {data, error} = await supabase
-                .from('advancements')
-                .select('*')
-                .eq('mcid', mcid)
-                .single()
-            console.log(data.completed);
-            let q = data.queue;
-            if(data.completed === false){
-                console.log("WE GOT HERE");
-                let {error} = await supabase
-                    .from('advancements')
-                    .update({queue: data.queue+1})
-                    .eq('mcid', mcid);
-                if (error){
-                    alert(error.message)
-                }
-            } else{
-                let {error} = await supabase
-                    .from('advancements')
-                    .update({completed: false})
-                    .eq('mcid', mcid);
-                if (error){
-                    alert(error.message)
-                }
-            }
+            dbSubscribe();
             ws.send(JSON.stringify({
                 messagetype: "redeem",
-                advancement: {mcid},
-                username: {username}
+                mcid: mcid,
+                price: price,
+                completed: completed,
+                queue: queue,
+                userid: user.id,
+                username: username,
+                usertokens: tokens
             }));
-
             //alert(`you now have ${tokens} tokens! thank you for your contribution!`)
         } else{
             alert("Hey! You don't have enough tokens for this. Stop by charity.korio.me to donate for more! (^-^)")
         }
         console.log(`${mcid} and ${tokens}`);
+        handleToggle()
+        setTimeout(() => { parentGetUser(); }, 500);
     }
 
 
     return (
         <div>
+
+
 
             <div className="hero w-screen">
                 <div className="hero-content text-center">
@@ -181,6 +139,7 @@ export default function Redeems({ session }) {
                     <tbody>
                     {/* row 1 */}
                     {advancements.map((advancement) => (
+
                     <tr>
                         <td>
                             <div className="flex items-center space-x-3">
@@ -206,7 +165,7 @@ export default function Redeems({ session }) {
                             }
                         </td>
                         <th>
-                            <button onClick={() => buttonPress(advancement.mcid, advancement.tokens)} className="btn btn-ghost">redeem</button>
+                            <button onClick={() => buttonPress(advancement.mcid, advancement.tokens, advancement.completed, advancement.queue)} className="btn btn-ghost">redeem</button>
                         </th>
                     </tr>
                     ))}

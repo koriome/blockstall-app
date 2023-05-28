@@ -4,11 +4,17 @@ import Auth from './Auth'
 import Redeems from './Redeems.jsx'
 import blockstalllogo from './assets/blockstalltrans.png'
 
+export let ws = new WebSocket('ws://bssocket.korio.me');
+
+
+
 function App() {
     const [session, setSession] = useState(null)
     const [username, setUsername] = useState(null)
     const [avatar, setAvatar] = useState(null)
     const [tokens, setTokens] = useState(null)
+
+
 
     useEffect(() => {
 
@@ -59,19 +65,8 @@ function App() {
         })
     }
 
-    if (session) {
-        const users = supabase.channel('custom-all-channel')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'users' },
-                (payload) => {
-                    getUser();
-                }
-            )
-            .subscribe()
-
-
-
+    const parentGetUser = () => {
+        getUser();
     }
 
 
@@ -111,7 +106,7 @@ function App() {
             </div>
             <div className='spacer'></div>
             <div className="container">
-                {!session ? <Auth /> : <Redeems key={session.user.id} session={session} />}
+                {!session ? <Auth /> : <Redeems key={session.user.id} session={session} parentGetUser={parentGetUser}/>}
             </div>
         </div>
 

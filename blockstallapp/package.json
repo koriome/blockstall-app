@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.21.0",
+    "classmates": "^1.0.1",
+    "classnames": "^2.3.2",
     "daisyui": "^2.51.6",
     "isomorphic-ws": "^5.0.0",
     "react": "^18.2.0",
@@ -18,6 +20,7 @@
     "react-dom": "^18.2.0",
     "socket.io": "^4.6.1",
     "socket.io-client": "^4.6.1",
+    "usehooks-ts": "^2.6.0",
     "ws": "^8.13.0"
   },
   "devDependencies": {

@@ -72,7 +72,8 @@ function App() {
     ws.addEventListener("message", (event) => {
         let json = JSON.parse(event.data);
         if(json.messagetype === "ping"){
-            ws.send('{ "messagetype": "pong" }')
+            ws.send('{ "messagetype": "pong" }');
+            console.log("server ping");
         }
     });
 

@@ -69,6 +69,13 @@ function App() {
         getUser();
     }
 
+    ws.addEventListener("message", (event) => {
+        let json = JSON.parse(event);
+        if(json.messagetype === "ping"){
+            ws.send('{ "messagetype":"pong" }')
+        }
+    });
+
 
 
     return (
